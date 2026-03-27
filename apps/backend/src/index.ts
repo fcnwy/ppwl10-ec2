@@ -25,7 +25,13 @@ const isBrowserRequest = (request: Request): boolean => {
 };
 
 const app = new Elysia()
-.use(cors({ origin: [process.env.FRONTEND_URL ?? "", process.env.TEST_URL ?? ""], credentials: true }))
+.use(cors({ 
+  origin: [
+    (process.env.FRONTEND_URL ?? "").replace(/\/$/, ""), 
+    (process.env.TEST_URL ?? "").replace(/\/$/, "")
+  ], 
+  credentials: true 
+}))
   .use(swagger())
   .use(cookie())
   .onRequest(({ request, set }) => {
@@ -33,7 +39,7 @@ const app = new Elysia()
     // HANYA jalankan logika jika path dimulai dengan /users
     if (url.pathname.startsWith("/users")) {
       const origin = request.headers.get("origin");
-      const frontendUrl = process.env.FRONTEND_URL ?? "";
+      const frontendUrl = (process.env.FRONTEND_URL ?? "").replace(/\/$/, "");
 
       // Jika request dari FRONTEND_URL → langsung izinkan
       if (origin && origin === frontendUrl) return;
@@ -105,9 +111,11 @@ const app = new Elysia()
     session.httpOnly = true;
     session.secure = true; 
     session.sameSite = "none";
+    session.path = "/";
 
     // !!! ubah url frontend jadi dynamic ambil dari env (lakukan ke semua file di apps/backend), contoh:
-    return redirect(`${process.env.FRONTEND_URL}/classroom`);
+    const frontendUrl = (process.env.FRONTEND_URL ?? "").replace(/\/$/, "");
+    return redirect(`${frontendUrl}/classroom`);
   })
 
   // Cek status login

@@ -189,6 +189,8 @@ function CourseWorkCard({ item }: { item: CourseWorkWithSubmission }) {
 // ─────────────────────────────────────────────
 
 export default function App() {
+  const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "")
+
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
@@ -198,7 +200,7 @@ export default function App() {
 
   // Cek status login
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/me`, { credentials: "include" })
+    fetch(`${BACKEND_URL}/auth/me`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setLoggedIn(d.loggedIn))
       .catch(() => setLoggedIn(false))
@@ -207,7 +209,7 @@ export default function App() {
   // Load daftar courses setelah login
   useEffect(() => {
     if (!loggedIn) return
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/classroom/courses`, { credentials: "include" })
+    fetch(`${BACKEND_URL}/classroom/courses`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setCourses(d.data ?? []))
   }, [loggedIn])
@@ -219,7 +221,7 @@ export default function App() {
     setError(null)
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/classroom/courses/${courseId}/submissions`,
+        `${BACKEND_URL}/classroom/courses/${courseId}/submissions`,
         { credentials: "include" }
       )
       const d = await res.json()
@@ -233,11 +235,11 @@ export default function App() {
   }
 
   const handleLogin = () => {
-    window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/login`
+    window.location.href = `${BACKEND_URL}/auth/login`
   }
 
   const handleLogout = async () => {
-    await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/logout`, { method: "POST", credentials: "include" })
+    await fetch(`${BACKEND_URL}/auth/logout`, { method: "POST", credentials: "include" })
     setLoggedIn(false)
     setCourses([])
     setItems([])
