@@ -116,8 +116,8 @@ const app = new Elysia()
 
       if (!session) return;
 
-      // Sisipkan header manual untuk mengecoh bug kehilangan cookie saat redirect di Vercel Node
-      set.headers["Set-Cookie"] = `session=${sessionId}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=None`;
+      // Sisipkan header manual yang menggunakan CHIPS (Partitioned) untuk mengatasi blokir Third-Party Cookie dari Browser modern.
+      set.headers["Set-Cookie"] = `session=${sessionId}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=None; Partitioned`;
 
       // Set cookie session
       session.value = sessionId;
