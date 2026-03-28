@@ -87,7 +87,7 @@ const app = new Elysia()
       refresh_token: tokens.refresh_token ?? undefined,
     });
 
-      if (!session) return;
+    if (!session) return;
 
     // Set cookie session
     session.value = sessionId;
@@ -98,7 +98,7 @@ const app = new Elysia()
     session.httpOnly = true;
     session.secure = true;    // WAJIB: Cookie hanya dikirim lewat HTTPS
     session.sameSite = "none"; // WAJIB: Agar cookie bisa dikirim antar domain berbeda
-    
+
       // Redirect ke frontend
       // !!! ubah url frontend jadi env var (lakukan ke semua file di apps/backend), contoh:
       return redirect(`${process.env.FRONTEND_URL}/classroom`);
