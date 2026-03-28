@@ -7,8 +7,8 @@ import { createOAuthClient, getAuthUrl } from "./auth";
 import { getCourses, getCourseWorks, getSubmissions } from "./classroom";
 import type { ApiResponse, HealthCheck, User } from "shared";
 
-// Serverless Production (Vercel) WAJIB pakai Database untuk sesi!
-// Karena variabel Map/Array akan ke-reset setiap kali pindah halaman.
+// Simple in-memory token store (ganti dengan database/session untuk production)
+const tokenStore = new Map<string, { access_token: string; refresh_token?: string }>();
 
 const app = new Elysia()
   // !!! modifikasi CORS agar dapat di akses oleh web frontend deployment https
@@ -80,15 +80,11 @@ const app = new Elysia()
     const oauth2Client = createOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);
 
-    // Simpan token dengan session ID sederhana ke Turso (Database)
-    // Supaya session tidak terhapus saat Vercel merestart serverless function-nya
+    // Simpan token dengan session ID sederhana
     const sessionId = crypto.randomUUID();
-    await prisma.session.create({
-      data: {
-        id: sessionId,
-        accessToken: tokens.access_token!,
-        refreshToken: tokens.refresh_token ?? undefined,
-      },
+    tokenStore.set(sessionId, {
+      access_token: tokens.access_token!,
+      refresh_token: tokens.refresh_token ?? undefined,
     });
 
     if (!session) return;
@@ -110,32 +106,21 @@ const app = new Elysia()
   )
 
   // Cek status login
-  .get("/auth/me", async ({ cookie: { session } }) => {
+  .get("/auth/me", ({ cookie: { session } }) => {
     const sessionId = session?.value as string;
-    if (!sessionId) return { loggedIn: false };
-
-    // Cek di Database Turso
-    const dbSession = await prisma.session.findUnique({
-      where: { id: sessionId },
-    });
-
-    if (!dbSession) {
+    if (!sessionId || !tokenStore.has(sessionId)) {
       return { loggedIn: false };
     }
     return { loggedIn: true, sessionId };
   })
 
   // Logout
-  .post("/auth/logout", async ({ cookie: { session } }) => {
+  .post("/auth/logout", ({ cookie: { session } }) => {
     if(!session) return { success: false };
 
     const sessionId = session?.value as string;
     if (sessionId) {
-      try {
-        await prisma.session.delete({ where: { id: sessionId } });
-      } catch (e) {
-        // Abaikan kalau session tidak ada
-      }
+      tokenStore.delete(sessionId);
       session.remove();
     }
     return { success: true };
@@ -146,23 +131,23 @@ const app = new Elysia()
   // Ambil daftar courses mahasiswa
   .get("/classroom/courses", async ({ cookie: { session }, set }) => {
     const sessionId = session?.value as string;
-    const dbSession = sessionId ? await prisma.session.findUnique({ where: { id: sessionId } }) : null;
+    const tokens = sessionId ? tokenStore.get(sessionId) : null;
 
-    if (!dbSession) {
+    if (!tokens) {
       set.status = 401;
       return { error: "Unauthorized. Silakan login terlebih dahulu." };
     }
 
-    const courses = await getCourses(dbSession.accessToken);
+    const courses = await getCourses(tokens.access_token);
     return { data: courses, message: "Courses retrieved" };
   })
 
   // Ambil coursework + submisi untuk satu course
   .get("/classroom/courses/:courseId/submissions", async ({ params, cookie: { session }, set }) => {
     const sessionId = session?.value as string;
-    const dbSession = sessionId ? await prisma.session.findUnique({ where: { id: sessionId } }) : null;
+    const tokens = sessionId ? tokenStore.get(sessionId) : null;
 
-    if (!dbSession) {
+    if (!tokens) {
       set.status = 401;
       return { error: "Unauthorized. Silakan login terlebih dahulu." };
     }
@@ -170,8 +155,8 @@ const app = new Elysia()
     const { courseId } = params;
 
     const [courseWorks, submissions] = await Promise.all([
-      getCourseWorks(dbSession.accessToken, courseId),
-      getSubmissions(dbSession.accessToken, courseId),
+      getCourseWorks(tokens.access_token, courseId),
+      getSubmissions(tokens.access_token, courseId),
     ]);
 
        // Gabungkan coursework dengan submisi
