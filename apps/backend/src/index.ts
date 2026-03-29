@@ -188,6 +188,7 @@ if (process.env.NODE_ENV != "production") {
   console.log(`🦊 GOOGLE_REDIRECT_URI: ${process.env.GOOGLE_REDIRECT_URI}`); // dari file .env
 }
 
+
 // tambahkan export app agar Elysia dapat dibaca Vercel serverless.
 export default app;
 export type App = typeof app;
